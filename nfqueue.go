@@ -2,7 +2,7 @@ package nfqueue
 
 /*
 #cgo LDFLAGS: -lnetfilter_queue
-//#cgo CFLAGS: -Wno-implicit-function-declaration
+#cgo CFLAGS: -Wall
 #include "nfqueue.h"
 */
 import "C"
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/user"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -27,6 +28,9 @@ type nfQueue struct {
 }
 
 func NewNFQueue(qid uint16) (nfq *nfQueue) {
+	if u, _ := user.Current(); u.Uid != "0" {
+		panic("Must be ran by root.")
+	}
 	nfq = &nfQueue{qid: qid}
 	return nfq
 }
@@ -82,7 +86,7 @@ func (this *nfQueue) init() {
 
 	if C.nfq_unbind_pf(this.h, C.AF_INET) < 0 {
 		this.Destroy()
-		panic("nfq_unbind_pf(AF_INET) failed.")
+		panic("nfq_unbind_pf(AF_INET) failed, are you running root?.")
 	}
 	if C.nfq_unbind_pf(this.h, C.AF_INET6) < 0 {
 		this.Destroy()
@@ -120,7 +124,7 @@ func (this *nfQueue) Destroy() {
 	this.lk.Lock()
 	defer this.lk.Unlock()
 
-	if this.fd != 0 && this.qh != nil {
+	if this.fd != 0 && this.Valid() {
 		syscall.Close(this.fd)
 	}
 	if this.qh != nil {

@@ -40,8 +40,8 @@ int nfqueue_cb_new(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_d
 		}
 	} else {
 		struct ipv6hdr *ip6 = (struct ipv6hdr*) payload;
-		saddr = (unsigned char *)&ip->saddr;
-		daddr = (unsigned char *)&ip->daddr;
+		saddr = (unsigned char *)&ip6->saddr;
+		daddr = (unsigned char *)&ip6->daddr;
 		//ipv6
 	}
 	//pass everything we can and let Go handle it, I'm not a big fan of C
