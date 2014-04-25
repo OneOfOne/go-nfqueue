@@ -18,11 +18,12 @@ Open another terminal :
 
 Then you can `ctrl+c` the program to exit.
 
-**Note*** that you must run it as root.
-
 Notes
 -----
-You must run the program as root 
+
+You must run the executable as root.
+This is *WIP*, but all patches are welcome.
+
 License
 -------
 go-nfqueue is under the Apache v2 license, check the included license file.
