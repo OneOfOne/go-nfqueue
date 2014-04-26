@@ -14,15 +14,18 @@ import (
 	"os/user"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
 type nfQueue struct {
-	qid uint16
-	h   *C.struct_nfq_handle
-	qh  *C.struct_q_handle
-	fd  int
-	lk  sync.Mutex
+	DefaultVerdict Verdict
+	Timeout        time.Duration
+	qid            uint16
+	h              *C.struct_nfq_handle
+	qh             *C.struct_q_handle
+	fd             int
+	lk             sync.Mutex
 
 	pktch chan *Packet
 }
@@ -31,7 +34,7 @@ func NewNFQueue(qid uint16) (nfq *nfQueue) {
 	if u, _ := user.Current(); u.Uid != "0" {
 		panic("Must be ran by root.")
 	}
-	nfq = &nfQueue{qid: qid}
+	nfq = &nfQueue{DefaultVerdict: ACCEPT, Timeout: time.Microsecond * 5, qid: qid}
 	return nfq
 }
 
@@ -46,14 +49,6 @@ func (this *nfQueue) Proccess() <-chan *Packet {
 	this.init()
 
 	go func() {
-		// bufp := (*C.char)(unsafe.Pointer(&this.buf[0]))
-		// var event syscall.EpollEvent
-
-		// go this.handle()
-		// select {
-		// case <-this.r:
-		// 	C.nfq_handle_packet(this.h, bufp, C.int(this.bufln))
-		// }
 		var (
 			buf  = make([]byte, 256) //
 			bufp = (*C.char)(unsafe.Pointer(&buf[0]))
@@ -141,20 +136,14 @@ func (this *nfQueue) Destroy() {
 	}
 }
 
-func (this *nfQueue) setVerdict(id, mark uint32, v Verdict) {
-	this.lk.Lock() //should we do that? I'm not sure
-	defer this.lk.Unlock()
-	C.nfq_set_verdict2(this.qh, C.u_int32_t(id), C.u_int32_t(v), C.u_int32_t(mark), 0, nil)
-}
-
 func (this *nfQueue) Valid() bool {
 	return this.h != nil && this.qh != nil
 }
 
 //export go_nfq_callback
-func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark uint32,
+func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	version, protocol, tos, ttl uint8, saddr, daddr unsafe.Pointer,
-	sport, dport, checksum uint16, extra, nfqptr unsafe.Pointer) {
+	sport, dport, checksum uint16, payload, nfqptr unsafe.Pointer) (v uint32) {
 
 	var (
 		nfq   = (*nfQueue)(nfqptr)
@@ -162,12 +151,12 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark uint32,
 		ipsz  = C.int(ipver.Size())
 	)
 
+	verdict := make(chan uint32, 1)
 	pkt := Packet{
-		nfq:        nfq,
 		Id:         id,
 		HWProtocol: hwproto,
 		Hook:       hook,
-		Mark:       mark,
+		Mark:       *mark,
 		IPHeader: &IPHeader{
 			Version:  ipver,
 			Protocol: IPProtocol(protocol),
@@ -182,6 +171,17 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark uint32,
 			DstPort:  dport,
 			Checksum: checksum,
 		},
+
+		verdict: verdict,
 	}
 	nfq.pktch <- &pkt
+
+	select {
+	case v = <-pkt.verdict:
+		*mark = pkt.Mark
+	case <-time.After(nfq.Timeout):
+		v = uint32(nfq.DefaultVerdict)
+	}
+	close(pkt.verdict)
+	return v
 }

@@ -1,6 +1,7 @@
 #include "nfqueue.h"
 #include "_cgo_export.h"
 
+
 int nfqueue_cb_new(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data) {
 
 	struct nfqnl_msg_packet_hdr *ph = nfq_get_msg_packet_hdr(nfa);
@@ -45,9 +46,7 @@ int nfqueue_cb_new(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_d
 		//ipv6
 	}
 	//pass everything we can and let Go handle it, I'm not a big fan of C
-	go_nfq_callback(id, ntohs(ph->hw_protocol), ph->hook, mark, ip->version, ip->protocol, 
-								  ip->tos, ip->ttl, saddr, daddr, sport, dport, checksum, NULL, data);
-	return 0;
-	//go_callback(ip->version, ip->protocol, saddr, daddr, sport, dport, extra-payload?, data)
-
+	uint32_t verdict = go_nfq_callback(id, ntohs(ph->hw_protocol), ph->hook, &mark, ip->version, ip->protocol, 
+								  ip->tos, ip->ttl, saddr, daddr, sport, dport, checksum, payload, data);
+	return nfq_set_verdict2(qh, id, verdict, mark, 0, NULL);
 }

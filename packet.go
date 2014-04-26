@@ -6,9 +6,11 @@ import (
 	"syscall"
 )
 
-type IPVersion uint8
-type IPProtocol uint8
-type Verdict uint8
+type (
+	IPVersion  uint8
+	IPProtocol uint8
+	Verdict    uint8
+)
 
 const (
 	IPv4 = IPVersion(4)
@@ -22,6 +24,7 @@ const (
 	ICMP   = IPProtocol(syscall.IPPROTO_ICMP)
 	ICMPv6 = IPProtocol(syscall.IPPROTO_ICMPV6)
 )
+
 const (
 	DROP Verdict = iota
 	ACCEPT
@@ -29,6 +32,10 @@ const (
 	QUEUE
 	REPEAT
 	STOP
+)
+
+var (
+	ErrVerdictSentOrTimedOut error = fmt.Errorf("The verdict was already sent or timed out.")
 )
 
 func (this IPVersion) String() string {
@@ -103,7 +110,7 @@ type Packet struct {
 	*IPHeader
 	*TCPUDPHeader
 
-	nfq *nfQueue
+	verdict chan uint32
 }
 
 func (this *Packet) String() string {
@@ -111,20 +118,25 @@ func (this *Packet) String() string {
 		this.Id, this.Protocol, this.Src, this.SrcPort, this.Dst, this.DstPort, this.Mark, this.Checksum, this.Tos, this.TTL)
 }
 
-func (this *Packet) Accept() {
-	if this.nfq != nil {
-		this.nfq.setVerdict(this.Id, this.Mark, ACCEPT)
-		this.nfq = nil
-	} else {
-		panic("Called Accept() on an invalid nfQueue.")
-	}
+func (this *Packet) setVerdict(v Verdict) (err error) {
+	defer func() {
+		if x := recover(); x != nil {
+			err = ErrVerdictSentOrTimedOut
+		}
+	}()
+	this.verdict <- uint32(v)
+	return err
 }
 
-func (this *Packet) Drop() {
-	if this.nfq != nil {
-		this.nfq.setVerdict(this.Id, this.Mark, DROP)
-		this.nfq = nil
-	} else {
-		panic("Called Accept() on an invalid nfQueue.")
-	}
+func (this *Packet) Accept() error {
+	return this.setVerdict(ACCEPT)
 }
+
+func (this *Packet) Drop() error {
+	return this.setVerdict(DROP)
+}
+
+//HUGE warning, if the iptables rules aren't set correctly this can cause some problems.
+// func (this *Packet) Repeat() error {
+// 	return this.SetVerdict(REPEAT)
+// }

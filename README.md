@@ -6,16 +6,19 @@ Usage
 ------
 Check the `examples/main.go` file
 
+```bash
 	cd $GOPATH/github.com/OneOfOne/go-nfqueue/examples
 	go build -race && sudo ./examples
-
-Open another terminal :
-
+```
+* Open another terminal :
+```bash
 	sudo iptables -I INPUT 1 -m conntrack --ctstate NEW -j NFQUEUE --queue-num 0
+	#or
+	sudo iptables -I INPUT -i eth0 -m conntrack --ctstate NEW -j NFQUEUE --queue-num 0
 	curl --head localhost
 	ping localhost
 	sudo iptables -D INPUT -m conntrack --ctstate NEW -j NFQUEUE --queue-num 0
-
+```
 Then you can `ctrl+c` the program to exit.
 
 Notes
