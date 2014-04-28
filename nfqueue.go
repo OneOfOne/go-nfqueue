@@ -8,10 +8,9 @@ package nfqueue
 import "C"
 
 import (
-	"fmt"
 	"net"
-	"os"
 	"os/user"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -49,21 +48,8 @@ func (this *nfQueue) Proccess() <-chan *Packet {
 	this.init()
 
 	go func() {
-		var (
-			buf  = make([]byte, 256) //
-			bufp = (*C.char)(unsafe.Pointer(&buf[0]))
-		)
-
-		for {
-			n, err := syscall.Read(this.fd, buf)
-			switch {
-			case n > 0 && err == nil:
-				C.nfq_handle_packet(this.h, bufp, C.int(n))
-			default:
-				fmt.Fprintf(os.Stderr, "nfqueue read error %+v\n", err)
-				break
-			}
-		}
+		runtime.LockOSThread()
+		C.loop_for_packets(this.h)
 	}()
 
 	return this.pktch

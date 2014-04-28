@@ -50,3 +50,12 @@ int nfqueue_cb_new(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_d
 								  ip->tos, ip->ttl, saddr, daddr, sport, dport, checksum, payload, data);
 	return nfq_set_verdict2(qh, id, verdict, mark, 0, NULL);
 }
+
+void loop_for_packets(struct nfq_handle *h) {
+	int fd = nfq_fd(h);
+	char buf[4096] __attribute__ ((aligned));
+	int rv;
+	while ((rv = recv(fd, buf, sizeof(buf), 0)) && rv >= 0) { 
+		nfq_handle_packet(h, buf, rv); 
+	}
+}
