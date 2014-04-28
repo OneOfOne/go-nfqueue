@@ -41,7 +41,7 @@ func NewNFQueue(qid uint16) (nfq *nfQueue) {
 This returns a channel that will recieve packets,
 the user then must call pkt.Accept() or pkt.Drop()
 */
-func (this *nfQueue) Proccess() <-chan *Packet {
+func (this *nfQueue) Process() <-chan *Packet {
 	if this.h != nil {
 		return this.pktch
 	}
@@ -139,6 +139,7 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 
 	verdict := make(chan uint32, 1)
 	pkt := Packet{
+		QueueId:    nfq.qid,
 		Id:         id,
 		HWProtocol: hwproto,
 		Hook:       hook,

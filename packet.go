@@ -103,6 +103,7 @@ type TCPUDPHeader struct {
 // TODO handle other protocols
 
 type Packet struct {
+	QueueId    uint16
 	Id         uint32
 	HWProtocol uint16
 	Hook       uint8
@@ -114,8 +115,8 @@ type Packet struct {
 }
 
 func (this *Packet) String() string {
-	return fmt.Sprintf("<Packet Id: %d, Type: %s, Src: %s:%d, Dst: %s:%d>, Mark: 0x%X, Checksum: 0x%X, TOS: 0x%X, TTL: %d",
-		this.Id, this.Protocol, this.Src, this.SrcPort, this.Dst, this.DstPort, this.Mark, this.Checksum, this.Tos, this.TTL)
+	return fmt.Sprintf("<Packet QId: %d, Id: %d, Type: %s, Src: %s:%d, Dst: %s:%d, Mark: 0x%X, Checksum: 0x%X, TOS: 0x%X, TTL: %d>",
+		this.QueueId, this.Id, this.Protocol, this.Src, this.SrcPort, this.Dst, this.DstPort, this.Mark, this.Checksum, this.Tos, this.TTL)
 }
 
 func (this *Packet) setVerdict(v Verdict) (err error) {
