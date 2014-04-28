@@ -169,6 +169,6 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	case <-time.After(nfq.Timeout):
 		v = uint32(nfq.DefaultVerdict)
 	}
-	close(pkt.verdict)
+
 	return v
 }

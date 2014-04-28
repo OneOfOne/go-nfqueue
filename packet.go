@@ -38,19 +38,19 @@ var (
 	ErrVerdictSentOrTimedOut error = fmt.Errorf("The verdict was already sent or timed out.")
 )
 
-func (this IPVersion) String() string {
-	switch this {
+func (v IPVersion) String() string {
+	switch v {
 	case IPv4:
 		return "IPv4"
 	case IPv6:
 		return "IPv6"
 	}
-	return fmt.Sprintf("<unknown ip version, %d>", uint8(this))
+	return fmt.Sprintf("<unknown ip version, %d>", uint8(v))
 }
 
 // Returns the byte size of the ip, IPv4 = 4 bytes, IPv6 = 16
-func (this IPVersion) Size() int {
-	switch this {
+func (v IPVersion) Size() int {
+	switch v {
 	case IPv4:
 		return 4
 	case IPv6:
@@ -59,8 +59,8 @@ func (this IPVersion) Size() int {
 	return 0
 }
 
-func (this IPProtocol) String() string {
-	switch this {
+func (p IPProtocol) String() string {
+	switch p {
 	case RAW:
 		return "RAW"
 	case TCP:
@@ -74,17 +74,17 @@ func (this IPProtocol) String() string {
 	case IGMP:
 		return "IGMP"
 	}
-	return fmt.Sprintf("<unknown protocol, %d>", uint8(this))
+	return fmt.Sprintf("<unknown protocol, %d>", uint8(p))
 }
 
-func (this Verdict) String() string {
-	switch this {
+func (v Verdict) String() string {
+	switch v {
 	case DROP:
 		return "DROP"
 	case ACCEPT:
 		return "ACCEPT"
 	}
-	return fmt.Sprintf("<unsupported verdict, %d>", uint8(this))
+	return fmt.Sprintf("<unsupported verdict, %d>", uint8(v))
 }
 
 type IPHeader struct {
@@ -114,30 +114,31 @@ type Packet struct {
 	verdict chan uint32
 }
 
-func (this *Packet) String() string {
+func (pkt *Packet) String() string {
 	return fmt.Sprintf("<Packet QId: %d, Id: %d, Type: %s, Src: %s:%d, Dst: %s:%d, Mark: 0x%X, Checksum: 0x%X, TOS: 0x%X, TTL: %d>",
-		this.QueueId, this.Id, this.Protocol, this.Src, this.SrcPort, this.Dst, this.DstPort, this.Mark, this.Checksum, this.Tos, this.TTL)
+		pkt.QueueId, pkt.Id, pkt.Protocol, pkt.Src, pkt.SrcPort, pkt.Dst, pkt.DstPort, pkt.Mark, pkt.Checksum, pkt.Tos, pkt.TTL)
 }
 
-func (this *Packet) setVerdict(v Verdict) (err error) {
+func (pkt *Packet) setVerdict(v Verdict) (err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = ErrVerdictSentOrTimedOut
 		}
 	}()
-	this.verdict <- uint32(v)
+	pkt.verdict <- uint32(v)
+	close(pkt.verdict)
 	return err
 }
 
-func (this *Packet) Accept() error {
-	return this.setVerdict(ACCEPT)
+func (pkt *Packet) Accept() error {
+	return pkt.setVerdict(ACCEPT)
 }
 
-func (this *Packet) Drop() error {
-	return this.setVerdict(DROP)
+func (pkt *Packet) Drop() error {
+	return pkt.setVerdict(DROP)
 }
 
 //HUGE warning, if the iptables rules aren't set correctly this can cause some problems.
-// func (this *Packet) Repeat() error {
+// func (pkt *Packet) Repeat() error {
 // 	return this.SetVerdict(REPEAT)
 // }

@@ -9,11 +9,6 @@ import (
 	"github.com/OneOfOne/go-nfqueue"
 )
 
-func print_packets(qid uint16, pkt *nfqueue.Packet) {
-	fmt.Println(pkt)
-	pkt.Accept()
-}
-
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU()) //if it's less than 2, the program will never exit, it blocks on recv
 	var (
@@ -30,8 +25,8 @@ LOOP:
 	for {
 		select {
 		case pkt := <-packets:
-			go pkt.Accept()
-			fmt.Println(pkt)
+			pkt.Accept()
+			go fmt.Println(pkt)
 		case <-sig:
 			break LOOP
 		}
